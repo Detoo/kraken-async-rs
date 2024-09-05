@@ -4,7 +4,7 @@ use crate::wss::v2::trading_messages::{
     AddOrderResult, BatchCancelResponse, CancelAllOrdersResult, CancelOnDisconnectResult,
     CancelOrderResult, EditOrderResult,
 };
-use crate::wss::v2::user_data_messages::{BalanceResponse, ExecutionResult, SubscriptionResult};
+use crate::wss::v2::user_data_messages::{BalanceResponse, ExecutionResponse, SubscriptionResult};
 use serde::{de, Deserialize, Deserializer, Serialize};
 use serde_json::Value::Null;
 use std::collections::VecDeque;
@@ -51,9 +51,9 @@ pub enum ChannelMessage {
     #[serde(rename = "status")]
     Status(SingleResponse<StatusUpdate>),
     #[serde(rename = "executions")]
-    Execution(Response<Vec<ExecutionResult>>),
+    Execution(ExecutionResponse),
     #[serde(rename = "balances")]
-    Balance(Response<BalanceResponse>),
+    Balance(BalanceResponse),
     #[serde(rename = "trade")]
     Trade(MarketDataResponse<Vec<Trade>>),
     #[serde(rename = "ticker")]
@@ -101,12 +101,6 @@ fn is_none<T: Serialize>(t: T) -> bool {
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct Pong {
     pub warning: Vec<String>,
-}
-
-#[derive(Debug, Deserialize, PartialEq)]
-pub struct Response<T> {
-    pub data: T,
-    pub sequence: i64,
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
@@ -167,11 +161,18 @@ pub struct PongResponse {
 
 #[cfg(test)]
 mod tests {
-    use crate::response_types::SystemStatus;
+    use crate::request_types::{TimeInForce, TriggerType};
+    use crate::response_types::{BuySell, OrderStatusV2, OrderType, SystemStatus};
     use crate::wss::v2::admin_messages::StatusUpdate;
     use crate::wss::v2::base_messages::{
         ChannelMessage, ErrorResponse, SingleResponse, WssMessage,
     };
+    use crate::wss::v2::trading_messages::{FeePreference, PriceType};
+    use crate::wss::v2::user_data_messages::{
+        ExecutionResponse, ExecutionResult, ExecutionType, TriggerDescription, TriggerStatus,
+        UserDataResponse,
+    };
+    use rust_decimal_macros::dec;
     use serde_json::Number;
     use std::str::FromStr;
 
@@ -196,6 +197,69 @@ mod tests {
     fn test_deserializing_l2_update() {
         let raw = r#"{"channel":"book","type":"update","data":[{"symbol":"BTC/USD","bids":[],"asks":[{"price":66732.5,"qty":5.48256063}],"checksum":2855135483,"timestamp":"2024-05-19T16:32:26.777454Z"}]}"#;
         let _parsed = serde_json::from_str::<ChannelMessage>(raw).unwrap();
+    }
+
+    #[test]
+    fn test_deserializing_execution_snapshot() {
+        let message = r#"{"channel":"executions","type":"snapshot","data":[{"order_id":"AHOJQ8-1E72C-8M2VQH","symbol":"ADX/USD","order_qty":81.36256082,"cum_cost":0,"time_in_force":"GTC","exec_type":"pending_new","side":"buy","order_type":"stop-loss-limit","order_userref":0,"limit_price_type":"static","triggers":{"price":0.2,"price_type":"static","reference":"index","status":"untriggered"},"stop_price":0.2,"limit_price":0.2,"trigger":"index","order_status":"pending_new","fee_usd_equiv":0,"fee_ccy_pref":"fciq","timestamp":"2024-05-18T12:01:56.165888Z"}],"sequence":120}"#;
+        let expected = WssMessage::Channel(ChannelMessage::Execution(ExecutionResponse::Snapshot(
+            UserDataResponse {
+                sequence: 120,
+                data: vec![ExecutionResult {
+                    execution_type: ExecutionType::PendingNew,
+                    cash_order_quantity: None,
+                    contingent: None,
+                    cost: None,
+                    execution_id: None,
+                    fees: None,
+                    liquidity_indicator: None,
+                    last_price: None,
+                    last_quantity: None,
+                    average_price: None,
+                    reason: None,
+                    cumulative_cost: Some(dec!(0.0)),
+                    cumulative_quantity: None,
+                    display_quantity: None,
+                    effective_time: None,
+                    expire_time: None,
+                    fee_preference: Some(FeePreference::Quote),
+                    fee_usd_equivalent: Some(dec!(0.0)),
+                    limit_price: Some(dec!(0.2)),
+                    limit_price_type: Some(PriceType::Static),
+                    margin: None,
+                    no_market_price_protection: None,
+                    order_ref_id: None,
+                    order_id: "AHOJQ8-1E72C-8M2VQH".to_string(),
+                    order_quantity: Some(dec!(81.36256082)),
+                    order_type: Some(OrderType::StopLossLimit),
+                    order_status: OrderStatusV2::PendingNew,
+                    order_user_ref: Some(0),
+                    post_only: None,
+                    position_status: None,
+                    reduce_only: None,
+                    side: Some(BuySell::Buy),
+                    symbol: Some("ADX/USD".to_string()),
+                    time_in_force: Some(TimeInForce::GTC),
+                    timestamp: "2024-05-18T12:01:56.165888Z".to_string(),
+                    trade_id: None,
+                    triggers: Some(TriggerDescription {
+                        reference: TriggerType::Index,
+                        price: dec!(0.2),
+                        price_type: PriceType::Static,
+                        actual_price: None,
+                        peak_price: None,
+                        last_price: None,
+                        status: TriggerStatus::Untriggered,
+                        timestamp: None,
+                    }),
+                    client_order_id: None,
+                }],
+            },
+        )));
+
+        let parsed = serde_json::from_str::<WssMessage>(message).unwrap();
+
+        assert_eq!(expected, parsed);
     }
 
     #[test]

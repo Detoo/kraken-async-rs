@@ -10,13 +10,6 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum ExecutionResponseType {
-    Snapshot,
-    Update,
-}
-
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum MakerTaker {
     #[serde(rename = "m")]
@@ -184,13 +177,6 @@ pub enum SubscriptionResult {
     Instrument(InstrumentSubscriptionResult),
 }
 
-#[derive(Debug, Deserialize)]
-pub struct ExecutionResponse {
-    pub channel: String,
-    #[serde(rename = "type")]
-    pub execution_response_type: ExecutionResponseType,
-}
-
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct Fee {
     pub asset: String,
@@ -295,10 +281,23 @@ pub struct Wallet {
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
-#[serde(untagged)]
+#[serde(tag = "type", rename_all = "lowercase")]
 pub enum BalanceResponse {
-    Update(Vec<LedgerUpdate>),
-    Snapshot(Vec<Balance>),
+    Update(UserDataResponse<Vec<LedgerUpdate>>),
+    Snapshot(UserDataResponse<Vec<Balance>>),
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum ExecutionResponse {
+    Update(UserDataResponse<Vec<ExecutionResult>>),
+    Snapshot(UserDataResponse<Vec<ExecutionResult>>),
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct UserDataResponse<T> {
+    pub sequence: i64,
+    pub data: T,
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
