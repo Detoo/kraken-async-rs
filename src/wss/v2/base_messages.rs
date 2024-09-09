@@ -4,7 +4,9 @@ use crate::wss::v2::trading_messages::{
     AddOrderResult, BatchCancelResponse, CancelAllOrdersResult, CancelOnDisconnectResult,
     CancelOrderResult, EditOrderResult,
 };
-use crate::wss::v2::user_data_messages::{BalanceResponse, ExecutionResponse, SubscriptionResult};
+use crate::wss::v2::user_data_messages::{
+    BalanceResponse, ExecutionResponse, SubscriptionResult, UnsubscriptionResult,
+};
 use serde::{de, Deserialize, Deserializer, Serialize};
 use serde_json::Value::Null;
 use std::collections::VecDeque;
@@ -37,6 +39,8 @@ pub enum MethodMessage {
     BatchCancel(BatchCancelResponse),
     #[serde(rename = "subscribe")]
     Subscription(ResultResponse<SubscriptionResult>),
+    #[serde(rename = "unsubscribe")]
+    Unsubscription(ResultResponse<UnsubscriptionResult>),
     #[serde(alias = "ping")]
     Ping(ResultResponse<Option<()>>),
     #[serde(rename = "pong")]
@@ -86,6 +90,14 @@ where
     pub fn new_subscription(params: T, req_id: i64) -> Self {
         Message {
             method: "subscribe".to_string(),
+            params,
+            req_id,
+        }
+    }
+
+    pub fn new_unsubscription(params: T, req_id: i64) -> Self {
+        Message {
+            method: "unsubscribe".to_string(),
             params,
             req_id,
         }

@@ -2,8 +2,9 @@ use crate::crypto::secrets::Token;
 use crate::request_types::{TimeInForce, TriggerType};
 use crate::response_types::{BuySell, OrderStatusV2, OrderType, PositionStatusV2};
 use crate::wss::v2::market_data_messages::{
-    BookSubscriptionResponse, OhlcSubscriptionResponse, TickerSubscriptionResponse,
-    TradeSubscriptionResponse,
+    BookSubscriptionResponse, BookUnsubscriptionResponse, OhlcSubscriptionResponse,
+    OhlcUnsubscriptionResponse, TickerSubscriptionResponse, TickerUnsubscriptionResponse,
+    TradeSubscriptionResponse, TradeUnsubscriptionResponse,
 };
 use crate::wss::v2::trading_messages::{ConditionalParams, FeePreference, PriceType};
 use rust_decimal::Decimal;
@@ -135,10 +136,32 @@ impl ExecutionSubscription {
     }
 }
 
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Clone)]
+pub struct ExecutionUnsubscription {
+    pub channel: String,
+    pub token: Token,
+}
+
+impl ExecutionUnsubscription {
+    pub fn new(token: Token) -> Self {
+        ExecutionUnsubscription {
+            channel: "executions".to_string(),
+            token,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct InstrumentSubscriptionResult {
     pub snapshot: Option<bool>,
+    pub warnings: Option<Vec<String>>,
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct InstrumentUnsubscriptionResult {
     pub warnings: Option<Vec<String>>,
 }
 
@@ -151,10 +174,16 @@ pub struct ExecutionsSubscriptionResult {
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
+pub struct ExecutionsUnsubscriptionResult {}
+
+#[derive(Debug, Deserialize, PartialEq)]
 pub struct BalanceSubscriptionResult {
     pub snapshot: Option<bool>,
     pub warnings: Option<Vec<String>>,
 }
+
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct BalanceUnsubscriptionResult {}
 
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(tag = "channel")]
@@ -175,6 +204,27 @@ pub enum SubscriptionResult {
     Balance(BalanceSubscriptionResult),
     #[serde(rename = "instrument")]
     Instrument(InstrumentSubscriptionResult),
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+#[serde(tag = "channel")]
+pub enum UnsubscriptionResult {
+    #[serde(rename = "level3")]
+    L3(BookUnsubscriptionResponse),
+    #[serde(rename = "book")]
+    Book(BookUnsubscriptionResponse),
+    #[serde(rename = "ticker")]
+    Ticker(TickerUnsubscriptionResponse),
+    #[serde(rename = "ohlc")]
+    Ohlc(OhlcUnsubscriptionResponse),
+    #[serde(rename = "trade")]
+    Trade(TradeUnsubscriptionResponse),
+    #[serde(rename = "executions")]
+    Execution(ExecutionsUnsubscriptionResult),
+    #[serde(rename = "balances")]
+    Balance(BalanceUnsubscriptionResult),
+    #[serde(rename = "instrument")]
+    Instrument(InstrumentUnsubscriptionResult),
 }
 
 #[derive(Debug, Deserialize, PartialEq)]

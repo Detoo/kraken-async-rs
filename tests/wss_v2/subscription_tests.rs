@@ -63,6 +63,8 @@ mod execution_subscription {
     }
 }
 
+// TODO Test execution_unsubscription
+
 mod balances_subscription {
     use super::*;
     use kraken_async_rs::crypto::secrets::Token;
@@ -299,6 +301,8 @@ mod ohlc_subscription {
             .await;
     }
 }
+
+// TODO Test ohlc_unsubscription
 
 mod trade_subscription {
     use super::*;

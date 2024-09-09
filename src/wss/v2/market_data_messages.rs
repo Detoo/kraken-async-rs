@@ -219,6 +219,24 @@ impl OhlcSubscription {
     }
 }
 
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Clone)]
+pub struct OhlcUnsubscription {
+    pub channel: String,
+    pub symbol: Vec<String>,
+    pub interval: i32,
+}
+
+impl OhlcUnsubscription {
+    pub fn new(symbols: Vec<String>, interval: i32) -> Self {
+        OhlcUnsubscription {
+            channel: "ohlc".to_string(),
+            symbol: symbols,
+            interval,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct SubscriptionResponse {
     pub channel: String,
@@ -235,11 +253,22 @@ pub struct TradeSubscriptionResponse {
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
+pub struct TradeUnsubscriptionResponse {
+    pub symbol: Option<String>,
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
 pub struct OhlcSubscriptionResponse {
     pub symbol: Option<String>,
     pub snapshot: Option<bool>,
     pub interval: i64,
     pub warnings: Option<Vec<String>>,
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct OhlcUnsubscriptionResponse {
+    pub symbol: String,
+    pub interval: i64,
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
@@ -251,10 +280,22 @@ pub struct BookSubscriptionResponse {
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
+pub struct BookUnsubscriptionResponse {
+    pub symbol: String,
+    pub depth: Option<i32>,
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
 pub struct TickerSubscriptionResponse {
     pub symbol: String,
     pub event_trigger: Option<EventTrigger>,
     pub snapshot: Option<bool>,
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct TickerUnsubscriptionResponse {
+    pub symbol: String,
+    pub event_trigger: Option<EventTrigger>,
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
