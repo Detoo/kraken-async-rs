@@ -5,7 +5,9 @@ use kraken_async_rs::crypto::secrets::Token;
 use kraken_async_rs::request_types::{SelfTradePrevention, TimeInForceV2};
 use kraken_async_rs::response_types::{BuySell, OrderType};
 use kraken_async_rs::secrets::secrets_provider::{EnvSecretsProvider, SecretsProvider};
-use kraken_async_rs::wss::v2::base_messages::{Message, MethodMessage, ResultResponse, WssMessage};
+use kraken_async_rs::wss::v2::base_messages::{
+    MethodResponse, RequestMessage, RequestMessageBody, ResponseMessage, ResultResponse,
+};
 use kraken_async_rs::wss::v2::kraken_wss_client::KrakenWSSClient;
 use kraken_async_rs::wss::v2::trading_messages::{
     AddOrderParams, AddOrderResult, CancelOrderParams, EditOrderParams, FeePreference,
@@ -40,7 +42,7 @@ async fn main() {
     let token = resp.result.unwrap().token;
 
     let mut client = KrakenWSSClient::new();
-    let mut kraken_stream = client.connect_auth::<WssMessage>().await.unwrap();
+    let mut kraken_stream = client.connect_auth::<ResponseMessage>().await.unwrap();
 
     let new_order = AddOrderParams {
         order_type: OrderType::Limit,
@@ -69,11 +71,10 @@ async fn main() {
         client_order_id: None,
     };
 
-    let order_message = Message {
-        method: "add_order".to_string(),
-        params: new_order,
+    let order_message = RequestMessage::AddOrder(RequestMessageBody {
+        params: Some(new_order),
         req_id: 0,
-    };
+    });
 
     let result = kraken_stream.send(&order_message).await;
     assert!(result.is_ok());
@@ -82,7 +83,7 @@ async fn main() {
 
     while let Ok(Some(message)) = timeout(Duration::from_secs(10), kraken_stream.next()).await {
         match message {
-            Ok(WssMessage::Method(MethodMessage::AddOrder(response))) => {
+            Ok(ResponseMessage::Method(MethodResponse::AddOrder(response))) => {
                 info!("{:?}", response);
                 if !edited {
                     edited = true;
@@ -94,18 +95,17 @@ async fn main() {
                     assert!(result.is_ok());
                 }
             }
-            Ok(WssMessage::Method(MethodMessage::EditOrder(response))) => {
+            Ok(ResponseMessage::Method(MethodResponse::EditOrder(response))) => {
                 let cancel = CancelOrderParams {
                     order_id: Some(vec![response.result.unwrap().order_id]),
                     client_order_id: None,
                     order_user_ref: None,
                     token: token.clone(),
                 };
-                let cancel_message = Message {
-                    method: "cancel_order".to_string(),
-                    params: cancel,
+                let cancel_message = RequestMessage::CancelOrder(RequestMessageBody {
+                    params: Some(cancel),
                     req_id: 0,
-                };
+                });
 
                 let result = kraken_stream.send(&cancel_message).await;
 
@@ -121,7 +121,7 @@ async fn main() {
 fn order_edit_from_add_order_result(
     token: Token,
     response: ResultResponse<AddOrderResult>,
-) -> Message<EditOrderParams> {
+) -> RequestMessage {
     let add_order_result = response.result.unwrap();
 
     let order_edit = EditOrderParams {
@@ -141,11 +141,10 @@ fn order_edit_from_add_order_result(
         token,
     };
 
-    Message {
-        method: "edit_order".to_string(),
-        params: order_edit,
+    RequestMessage::EditOrder(RequestMessageBody {
+        params: Some(order_edit),
         req_id: 0,
-    }
+    })
 }
 
 fn set_up_logging(filename: &str) {

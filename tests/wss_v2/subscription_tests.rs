@@ -1,5 +1,5 @@
 use crate::wss_v2::shared::CallResponseTest;
-use kraken_async_rs::wss::v2::base_messages::{Message, MethodMessage, ResultResponse, WssMessage};
+use kraken_async_rs::wss::v2::base_messages::{MethodResponse, ResponseMessage, ResultResponse};
 use kraken_async_rs::wss::v2::market_data_messages::{
     EventTrigger, TickerSubscription, TickerSubscriptionResponse,
 };
@@ -9,7 +9,9 @@ use serde_json::{json, Value};
 mod execution_subscription {
     use super::*;
     use kraken_async_rs::crypto::secrets::Token;
-
+    use kraken_async_rs::wss::v2::base_messages::{
+        ChannelSubscription, RequestMessage, RequestMessageBody,
+    };
     use kraken_async_rs::wss::v2::user_data_messages::{
         ExecutionSubscription, ExecutionsSubscriptionResult,
     };
@@ -22,8 +24,8 @@ mod execution_subscription {
         r#"{"method":"subscribe","req_id":0,"result":{"channel":"executions","maxratecount":180,"snapshot":true,"warnings":["cancel_reason is deprecated, use reason","stop_price is deprecated, use triggers.price","trigger is deprecated use triggers.reference","triggered_price is deprecated use triggers.last_price"]},"success":true,"time_in":"2024-05-19T19:30:36.343170Z","time_out":"2024-05-19T19:30:36.350083Z"}"#.to_string()
     }
 
-    fn get_expected_execution_message() -> WssMessage {
-        WssMessage::Method(MethodMessage::Subscription(ResultResponse {
+    fn get_expected_execution_message() -> ResponseMessage {
+        ResponseMessage::Method(MethodResponse::Subscription(ResultResponse {
             result: Some(SubscriptionResult::Execution(
                 ExecutionsSubscriptionResult {
                     max_rate_count: Some(180),
@@ -46,11 +48,15 @@ mod execution_subscription {
 
     #[tokio::test]
     async fn test_execution_subscription() {
-        let mut execution_params = ExecutionSubscription::new(Token::new("someToken".to_string()));
-        execution_params.snapshot = Some(true);
-        execution_params.snapshot_trades = Some(true);
-
-        let subscription = Message::new_subscription(execution_params, 0);
+        let subscription = RequestMessage::Subscribe(RequestMessageBody {
+            params: Some(ChannelSubscription::Execution(ExecutionSubscription {
+                token: Token::new("someToken".to_string()),
+                snapshot: Some(true),
+                snapshot_trades: Some(true),
+                rate_counter: None,
+            })),
+            req_id: 0,
+        });
 
         CallResponseTest::builder()
             .match_on(get_expected_execution_subscription())
@@ -63,12 +69,63 @@ mod execution_subscription {
     }
 }
 
-// TODO Test execution_unsubscription
+mod execution_unsubscription {
+    use super::*;
+    use kraken_async_rs::crypto::secrets::Token;
+    use kraken_async_rs::wss::v2::base_messages::{
+        ChannelUnsubscription, RequestMessage, RequestMessageBody,
+    };
+    use kraken_async_rs::wss::v2::user_data_messages::{
+        ExecutionUnsubscription, ExecutionsUnsubscriptionResult, UnsubscriptionResult,
+    };
+
+    fn get_expected_request() -> Value {
+        json!({"method":"unsubscribe","params":{"channel":"executions","token":"someToken"},"req_id":121})
+    }
+
+    fn get_expected_response() -> String {
+        r#"{"method":"unsubscribe","req_id":121,"result":{"channel":"executions"},"success":true,"time_in":"2024-05-19T19:06:57.002983Z","time_out":"2024-05-19T19:06:57.003037Z"}"#.to_string()
+    }
+
+    fn get_expected_parsed_message() -> ResponseMessage {
+        ResponseMessage::Method(MethodResponse::Unsubscription(ResultResponse {
+            result: Some(UnsubscriptionResult::Execution(
+                ExecutionsUnsubscriptionResult {},
+            )),
+            error: None,
+            success: true,
+            req_id: 121,
+            time_in: "2024-05-19T19:06:57.002983Z".to_string(),
+            time_out: "2024-05-19T19:06:57.003037Z".to_string(),
+        }))
+    }
+
+    #[tokio::test]
+    async fn test_execution_unsubscription() {
+        let message = RequestMessage::Unsubscribe(RequestMessageBody {
+            params: Some(ChannelUnsubscription::Execution(ExecutionUnsubscription {
+                token: Token::new("someToken".to_string()),
+            })),
+            req_id: 121,
+        });
+
+        CallResponseTest::builder()
+            .match_on(get_expected_request())
+            .respond_with(get_expected_response())
+            .send(message)
+            .expect(get_expected_parsed_message())
+            .build()
+            .test()
+            .await;
+    }
+}
 
 mod balances_subscription {
     use super::*;
     use kraken_async_rs::crypto::secrets::Token;
-
+    use kraken_async_rs::wss::v2::base_messages::{
+        ChannelSubscription, RequestMessage, RequestMessageBody,
+    };
     use kraken_async_rs::wss::v2::user_data_messages::{
         BalanceSubscriptionResult, BalancesSubscription,
     };
@@ -81,8 +138,8 @@ mod balances_subscription {
         r#"{"method":"subscribe","req_id":10312008,"result":{"channel":"balances","snapshot":true},"success":true,"time_in":"2024-05-19T16:25:28.289124Z","time_out":"2024-05-19T16:25:28.293750Z"}"#.to_string()
     }
 
-    fn get_expected_balances_message() -> WssMessage {
-        WssMessage::Method(MethodMessage::Subscription(ResultResponse {
+    fn get_expected_balances_message() -> ResponseMessage {
+        ResponseMessage::Method(MethodResponse::Subscription(ResultResponse {
             result: Some(SubscriptionResult::Balance(BalanceSubscriptionResult {
                 snapshot: Some(true),
                 warnings: None,
@@ -97,10 +154,13 @@ mod balances_subscription {
 
     #[tokio::test]
     async fn test_balances_subscription() {
-        let mut balances_params = BalancesSubscription::new(Token::new("anotherToken".to_string()));
-        balances_params.snapshot = Some(true);
-
-        let subscription = Message::new_subscription(balances_params, 10312008);
+        let subscription = RequestMessage::Subscribe(RequestMessageBody {
+            params: Some(ChannelSubscription::Balance(BalancesSubscription {
+                token: Token::new("anotherToken".to_string()),
+                snapshot: Some(true),
+            })),
+            req_id: 10312008,
+        });
 
         CallResponseTest::builder()
             .match_on(get_expected_balances_subscription())
@@ -115,6 +175,9 @@ mod balances_subscription {
 
 mod ticker_subscription {
     use super::*;
+    use kraken_async_rs::wss::v2::base_messages::{
+        ChannelSubscription, RequestMessage, RequestMessageBody,
+    };
 
     fn get_expected_ticker_subscription() -> Value {
         json!({"method":"subscribe","params":{"channel":"ticker","symbol":["BTC/USD"]},"req_id":42})
@@ -124,8 +187,8 @@ mod ticker_subscription {
         r#"{"method":"subscribe","req_id":42,"result":{"channel":"ticker","event_trigger":"trades","snapshot":true,"symbol":"BTC/USD"},"success":true,"time_in":"2024-05-15T11:20:43.013486Z","time_out":"2024-05-15T11:20:43.013545Z"}"#.to_string()
     }
 
-    fn get_expected_ticker_message() -> WssMessage {
-        WssMessage::Method(MethodMessage::Subscription(ResultResponse {
+    fn get_expected_ticker_message() -> ResponseMessage {
+        ResponseMessage::Method(MethodResponse::Subscription(ResultResponse {
             result: Some(SubscriptionResult::Ticker(TickerSubscriptionResponse {
                 symbol: "BTC/USD".to_string(),
                 event_trigger: Some(EventTrigger::Trades),
@@ -141,9 +204,14 @@ mod ticker_subscription {
 
     #[tokio::test]
     async fn test_ticker_subscription() {
-        let ticker_params = TickerSubscription::new(vec!["BTC/USD".into()]);
-
-        let subscription = Message::new_subscription(ticker_params, 42);
+        let subscription = RequestMessage::Subscribe(RequestMessageBody {
+            params: Some(ChannelSubscription::Ticker(TickerSubscription {
+                symbol: vec!["BTC/USD".into()],
+                event_trigger: None,
+                snapshot: None,
+            })),
+            req_id: 42,
+        });
 
         CallResponseTest::builder()
             .match_on(get_expected_ticker_subscription())
@@ -158,6 +226,9 @@ mod ticker_subscription {
 
 mod book_subscription {
     use super::*;
+    use kraken_async_rs::wss::v2::base_messages::{
+        ChannelSubscription, RequestMessage, RequestMessageBody,
+    };
     use kraken_async_rs::wss::v2::market_data_messages::{
         BookSubscription, BookSubscriptionResponse,
     };
@@ -170,8 +241,8 @@ mod book_subscription {
         r#"{"method":"subscribe","req_id":11,"result":{"channel":"book","depth":10,"snapshot":true,"symbol":"BTC/USD"},"success":true,"time_in":"2024-05-19T16:27:13.694962Z","time_out":"2024-05-19T16:27:13.695006Z"}"#.to_string()
     }
 
-    fn get_expected_book_message() -> WssMessage {
-        WssMessage::Method(MethodMessage::Subscription(ResultResponse {
+    fn get_expected_book_message() -> ResponseMessage {
+        ResponseMessage::Method(MethodResponse::Subscription(ResultResponse {
             result: Some(SubscriptionResult::Book(BookSubscriptionResponse {
                 symbol: "BTC/USD".to_string(),
                 snapshot: Some(true),
@@ -188,11 +259,15 @@ mod book_subscription {
 
     #[tokio::test]
     async fn test_book_subscription() {
-        let mut book_params = BookSubscription::new(vec!["BTC/USD".into()]);
-        book_params.depth = Some(10);
-        book_params.snapshot = Some(true);
-
-        let subscription = Message::new_subscription(book_params, 11);
+        let subscription = RequestMessage::Subscribe(RequestMessageBody {
+            params: Some(ChannelSubscription::Orderbook(BookSubscription {
+                symbol: vec!["BTC/USD".into()],
+                depth: Some(10),
+                snapshot: Some(true),
+                token: None,
+            })),
+            req_id: 11,
+        });
 
         CallResponseTest::builder()
             .match_on(get_expected_book_subscription())
@@ -208,6 +283,9 @@ mod book_subscription {
 mod l3_subscription {
     use super::*;
     use kraken_async_rs::crypto::secrets::Token;
+    use kraken_async_rs::wss::v2::base_messages::{
+        ChannelSubscription, RequestMessage, RequestMessageBody,
+    };
     use kraken_async_rs::wss::v2::market_data_messages::{
         BookSubscription, BookSubscriptionResponse,
     };
@@ -220,8 +298,8 @@ mod l3_subscription {
         r#"{"method":"subscribe","req_id":99,"result":{"channel":"level3","snapshot":true,"symbol":"BTC/USD"},"success":true,"time_in":"2024-05-19T18:51:30.701627Z","time_out":"2024-05-19T18:51:30.708403Z"}"#.to_string()
     }
 
-    fn get_expected_l3_message() -> WssMessage {
-        WssMessage::Method(MethodMessage::Subscription(ResultResponse {
+    fn get_expected_l3_message() -> ResponseMessage {
+        ResponseMessage::Method(MethodResponse::Subscription(ResultResponse {
             result: Some(SubscriptionResult::L3(BookSubscriptionResponse {
                 symbol: "BTC/USD".to_string(),
                 snapshot: Some(true),
@@ -238,11 +316,15 @@ mod l3_subscription {
 
     #[tokio::test]
     async fn test_l3_subscription() {
-        let mut book_params =
-            BookSubscription::new_l3(vec!["BTC/USD".into()], Token::new("someToken".to_string()));
-        book_params.snapshot = Some(true);
-
-        let subscription = Message::new_subscription(book_params, 99);
+        let subscription = RequestMessage::Subscribe(RequestMessageBody {
+            params: Some(ChannelSubscription::L3(BookSubscription {
+                symbol: vec!["BTC/USD".into()],
+                token: Some(Token::new("someToken".to_string())),
+                snapshot: Some(true),
+                depth: None,
+            })),
+            req_id: 99,
+        });
 
         CallResponseTest::builder()
             .match_on(get_expected_l3_subscription())
@@ -257,6 +339,9 @@ mod l3_subscription {
 
 mod ohlc_subscription {
     use super::*;
+    use kraken_async_rs::wss::v2::base_messages::{
+        ChannelSubscription, RequestMessage, RequestMessageBody,
+    };
     use kraken_async_rs::wss::v2::market_data_messages::{
         OhlcSubscription, OhlcSubscriptionResponse,
     };
@@ -269,8 +354,8 @@ mod ohlc_subscription {
         r#"{"method":"subscribe","req_id":121,"result":{"channel":"ohlc","interval":60,"snapshot":true,"symbol":"ETH/USD","warnings":["timestamp is deprecated, use interval_begin"]},"success":true,"time_in":"2024-05-19T19:06:57.002983Z","time_out":"2024-05-19T19:06:57.003037Z"}"#.to_string()
     }
 
-    fn get_expected_ohlc_message() -> WssMessage {
-        WssMessage::Method(MethodMessage::Subscription(ResultResponse {
+    fn get_expected_ohlc_message() -> ResponseMessage {
+        ResponseMessage::Method(MethodResponse::Subscription(ResultResponse {
             result: Some(SubscriptionResult::Ohlc(OhlcSubscriptionResponse {
                 symbol: Some("ETH/USD".to_string()),
                 snapshot: Some(true),
@@ -287,9 +372,14 @@ mod ohlc_subscription {
 
     #[tokio::test]
     async fn test_ohlc_subscription() {
-        let ohlc_params = OhlcSubscription::new(vec!["ETH/USD".into()], 60);
-
-        let subscription = Message::new_subscription(ohlc_params, 121);
+        let subscription = RequestMessage::Subscribe(RequestMessageBody {
+            params: Some(ChannelSubscription::Ohlc(OhlcSubscription {
+                symbol: vec!["ETH/USD".into()],
+                interval: 60,
+                snapshot: None,
+            })),
+            req_id: 121,
+        });
 
         CallResponseTest::builder()
             .match_on(get_expected_ohlc_subscription())
@@ -302,10 +392,64 @@ mod ohlc_subscription {
     }
 }
 
-// TODO Test ohlc_unsubscription
+mod ohlc_unsubscription {
+    use super::*;
+    use kraken_async_rs::wss::v2::base_messages::{
+        ChannelUnsubscription, RequestMessage, RequestMessageBody,
+    };
+    use kraken_async_rs::wss::v2::market_data_messages::{
+        OhlcUnsubscription, OhlcUnsubscriptionResponse,
+    };
+    use kraken_async_rs::wss::v2::user_data_messages::UnsubscriptionResult;
+
+    fn get_expected_request() -> Value {
+        json!({"method":"unsubscribe","params":{"channel":"ohlc","symbol":["ETH/USD"],"interval":60},"req_id":121})
+    }
+
+    fn get_expected_response() -> String {
+        r#"{"method":"unsubscribe","req_id":121,"result":{"channel":"ohlc","interval":60,"symbol":"ETH/USD"},"success":true,"time_in":"2024-05-19T19:06:57.002983Z","time_out":"2024-05-19T19:06:57.003037Z"}"#.to_string()
+    }
+
+    fn get_expected_parsed_message() -> ResponseMessage {
+        ResponseMessage::Method(MethodResponse::Unsubscription(ResultResponse {
+            result: Some(UnsubscriptionResult::Ohlc(OhlcUnsubscriptionResponse {
+                symbol: "ETH/USD".to_string(),
+                interval: 60,
+            })),
+            error: None,
+            success: true,
+            req_id: 121,
+            time_in: "2024-05-19T19:06:57.002983Z".to_string(),
+            time_out: "2024-05-19T19:06:57.003037Z".to_string(),
+        }))
+    }
+
+    #[tokio::test]
+    async fn test_ohlc_unsubscription() {
+        let message = RequestMessage::Unsubscribe(RequestMessageBody {
+            params: Some(ChannelUnsubscription::Ohlc(OhlcUnsubscription {
+                symbol: vec!["ETH/USD".into()],
+                interval: 60,
+            })),
+            req_id: 121,
+        });
+
+        CallResponseTest::builder()
+            .match_on(get_expected_request())
+            .respond_with(get_expected_response())
+            .send(message)
+            .expect(get_expected_parsed_message())
+            .build()
+            .test()
+            .await;
+    }
+}
 
 mod trade_subscription {
     use super::*;
+    use kraken_async_rs::wss::v2::base_messages::{
+        ChannelSubscription, RequestMessage, RequestMessageBody,
+    };
     use kraken_async_rs::wss::v2::market_data_messages::{
         TradeSubscriptionResponse, TradesSubscription,
     };
@@ -318,8 +462,8 @@ mod trade_subscription {
         r#"{"method":"subscribe","req_id":0,"result":{"channel":"trade","snapshot":true,"symbol":"BTC/USD"},"success":true,"time_in":"2024-05-19T19:11:23.034030Z","time_out":"2024-05-19T19:11:23.034073Z"}"#.to_string()
     }
 
-    fn get_expected_trade_message() -> WssMessage {
-        WssMessage::Method(MethodMessage::Subscription(ResultResponse {
+    fn get_expected_trade_message() -> ResponseMessage {
+        ResponseMessage::Method(MethodResponse::Subscription(ResultResponse {
             result: Some(SubscriptionResult::Trade(TradeSubscriptionResponse {
                 symbol: Some("BTC/USD".to_string()),
                 snapshot: Some(true),
@@ -335,9 +479,13 @@ mod trade_subscription {
 
     #[tokio::test]
     async fn test_trade_subscription() {
-        let trade_params = TradesSubscription::new(vec!["BTC/USD".into()]);
-
-        let subscription = Message::new_subscription(trade_params, 0);
+        let subscription = RequestMessage::Subscribe(RequestMessageBody {
+            params: Some(ChannelSubscription::Trade(TradesSubscription {
+                symbol: vec!["BTC/USD".into()],
+                snapshot: None,
+            })),
+            req_id: 0,
+        });
 
         CallResponseTest::builder()
             .match_on(get_expected_trade_subscription())
@@ -352,6 +500,9 @@ mod trade_subscription {
 
 mod instruments_subscription {
     use super::*;
+    use kraken_async_rs::wss::v2::base_messages::{
+        ChannelSubscription, RequestMessage, RequestMessageBody,
+    };
     use kraken_async_rs::wss::v2::market_data_messages::InstrumentsSubscription;
     use kraken_async_rs::wss::v2::user_data_messages::InstrumentSubscriptionResult;
 
@@ -363,8 +514,8 @@ mod instruments_subscription {
         r#"{"method":"subscribe","req_id":0,"result":{"channel":"instrument","snapshot":true,"warnings":["tick_size is deprecated, use price_increment"]},"success":true,"time_in":"2024-05-19T19:44:43.264430Z","time_out":"2024-05-19T19:44:43.264464Z"}"#.to_string()
     }
 
-    fn get_expected_instruments_message() -> WssMessage {
-        WssMessage::Method(MethodMessage::Subscription(ResultResponse {
+    fn get_expected_instruments_message() -> ResponseMessage {
+        ResponseMessage::Method(MethodResponse::Subscription(ResultResponse {
             result: Some(SubscriptionResult::Instrument(
                 InstrumentSubscriptionResult {
                     snapshot: Some(true),
@@ -381,9 +532,12 @@ mod instruments_subscription {
 
     #[tokio::test]
     async fn test_instruments_subscription() {
-        let instruments_params = InstrumentsSubscription::new(true);
-
-        let subscription = Message::new_subscription(instruments_params, 0);
+        let subscription = RequestMessage::Subscribe(RequestMessageBody {
+            params: Some(ChannelSubscription::Instrument(InstrumentsSubscription {
+                snapshot: Some(true),
+            })),
+            req_id: 0,
+        });
 
         CallResponseTest::builder()
             .match_on(get_expected_instruments_subscription())

@@ -1,8 +1,8 @@
 //! Kraken WSS client and message streams
 use crate::wss::errors::WSSError;
-use crate::wss::v2::base_messages::Message;
+use crate::wss::v2::base_messages::RequestMessage;
 use futures_util::SinkExt;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::pin::Pin;
@@ -115,18 +115,12 @@ where
 {
     /// Send an arbitrary serializable message through the stream.
     #[tracing::instrument(skip(self))]
-    pub async fn send<M>(&mut self, message: &Message<M>) -> Result<(), WSSError>
-    where
-        M: Serialize + Debug,
-    {
+    pub async fn send(&mut self, message: &RequestMessage) -> Result<(), WSSError> {
         Self::send_as_str(&mut self.stream, message).await
     }
 
     #[tracing::instrument(skip(stream))]
-    async fn send_as_str<M>(stream: &mut RawStream, message: &Message<M>) -> Result<(), WSSError>
-    where
-        M: Serialize + Debug,
-    {
+    async fn send_as_str(stream: &mut RawStream, message: &RequestMessage) -> Result<(), WSSError> {
         let message_json = serde_json::to_string(message)?;
 
         if cfg!(feature = "debug-outbound") {

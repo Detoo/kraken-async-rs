@@ -2,7 +2,9 @@ use kraken_async_rs::clients::core_kraken_client::CoreKrakenClient;
 use kraken_async_rs::clients::kraken_client::KrakenClient;
 use kraken_async_rs::crypto::nonce_provider::{IncreasingNonceProvider, NonceProvider};
 use kraken_async_rs::secrets::secrets_provider::{EnvSecretsProvider, SecretsProvider};
-use kraken_async_rs::wss::v2::base_messages::{Message, WssMessage};
+use kraken_async_rs::wss::v2::base_messages::{
+    ChannelSubscription, RequestMessage, RequestMessageBody, ResponseMessage,
+};
 use kraken_async_rs::wss::v2::kraken_wss_client::KrakenWSSClient;
 use kraken_async_rs::wss::v2::user_data_messages::BalancesSubscription;
 use std::fs::File;
@@ -34,10 +36,15 @@ async fn main() {
     let token = resp.result.unwrap().token;
 
     let mut client = KrakenWSSClient::new();
-    let mut kraken_stream = client.connect_auth::<WssMessage>().await.unwrap();
+    let mut kraken_stream = client.connect_auth::<ResponseMessage>().await.unwrap();
 
-    let balances_params = BalancesSubscription::new(token);
-    let subscription = Message::new_subscription(balances_params, 0);
+    let subscription = RequestMessage::Subscribe(RequestMessageBody {
+        params: Some(ChannelSubscription::Balance(BalancesSubscription {
+            token,
+            snapshot: None,
+        })),
+        req_id: 0,
+    });
 
     let result = kraken_stream.send(&subscription).await;
     assert!(result.is_ok());

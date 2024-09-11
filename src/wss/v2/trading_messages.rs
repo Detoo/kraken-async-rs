@@ -35,14 +35,14 @@ pub enum PriceType {
     Quote,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TriggerParams {
     pub price: Decimal,
     pub price_type: Option<PriceType>,
     pub reference: Option<TriggerType>,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct ConditionalParams {
     pub order_type: Option<OrderType>,
     pub limit_price: Option<Decimal>,
@@ -52,7 +52,7 @@ pub struct ConditionalParams {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AddOrderParams {
     pub order_type: OrderType,
     pub side: BuySell,
@@ -101,7 +101,7 @@ pub struct AddOrderResult {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct EditOrderParams {
     pub deadline: Option<String>,
     #[serde(with = "float_option")]
@@ -134,7 +134,7 @@ pub struct EditOrderResult {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CancelOrderParams {
     pub order_id: Option<Vec<String>>,
     #[serde(rename = "cl_ord_id")]
@@ -152,7 +152,7 @@ pub struct CancelOrderResult {
     pub client_order_id: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CancelAllOrdersParams {
     pub token: Token,
 }
@@ -163,7 +163,7 @@ pub struct CancelAllOrdersResult {
     pub warning: Option<Vec<String>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CancelOnDisconnectParams {
     pub timeout: i64,
     pub token: Token,
@@ -179,7 +179,7 @@ pub struct CancelOnDisconnectResult {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BatchOrder {
     pub order_type: OrderType,
     pub side: BuySell,
@@ -214,7 +214,7 @@ pub struct BatchOrder {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BatchOrderParams {
     pub deadline: Option<String>,
     pub symbol: String,
@@ -223,7 +223,7 @@ pub struct BatchOrderParams {
     pub orders: Vec<BatchOrder>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct BatchCancelParams {
     pub orders: Vec<IntOrString>,
     pub token: Token,

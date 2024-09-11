@@ -1,8 +1,8 @@
 use crate::wss_v2::shared::{CallResponseTest, ParseIncomingTest};
 use kraken_async_rs::response_types::SystemStatus;
 use kraken_async_rs::wss::v2::admin_messages::StatusUpdate;
-use kraken_async_rs::wss::v2::base_messages::ChannelMessage::{Heartbeat, Status};
-use kraken_async_rs::wss::v2::base_messages::{Message, MethodMessage, SingleResponse, WssMessage};
+use kraken_async_rs::wss::v2::base_messages::ChannelResponse::{Heartbeat, Status};
+use kraken_async_rs::wss::v2::base_messages::{MethodResponse, ResponseMessage, SingleResponse};
 use serde_json::{json, Number, Value};
 use std::str::FromStr;
 
@@ -11,7 +11,7 @@ async fn test_admin_messages() {
     let heartbeat = r#"{"channel":"heartbeat"}"#.to_string();
     let status_update = r#"{"channel":"status","data":[{"api_version":"v2","connection_id":12393906104898154338,"system":"online","version":"2.0.4"}],"type":"update"}"#.to_string();
 
-    let status_message = WssMessage::Channel(Status(SingleResponse {
+    let status_message = ResponseMessage::Channel(Status(SingleResponse {
         data: StatusUpdate {
             api_version: "v2".to_string(),
             connection_id: Number::from_str("12393906104898154338").unwrap(),
@@ -22,7 +22,7 @@ async fn test_admin_messages() {
 
     ParseIncomingTest::new()
         .with_incoming(heartbeat)
-        .expect_message(WssMessage::Channel(Heartbeat))
+        .expect_message(ResponseMessage::Channel(Heartbeat))
         .with_incoming(status_update)
         .expect_message(status_message)
         .test()
@@ -31,7 +31,9 @@ async fn test_admin_messages() {
 
 mod ping_pong {
     use super::*;
-    use kraken_async_rs::wss::v2::base_messages::PongResponse;
+    use kraken_async_rs::wss::v2::base_messages::{
+        PongResponse, RequestMessage, RequestMessageBody,
+    };
 
     fn get_expected_ping() -> Value {
         json!({"method":"ping","req_id":1})
@@ -41,8 +43,8 @@ mod ping_pong {
         r#"{"method":"pong","req_id":1,"time_in":"2024-05-20T11:08:49.272922Z","time_out":"2024-05-20T11:08:49.272940Z"}"#.to_string()
     }
 
-    fn get_expected_pong_message() -> WssMessage {
-        WssMessage::Method(MethodMessage::Pong(PongResponse {
+    fn get_expected_pong_message() -> ResponseMessage {
+        ResponseMessage::Method(MethodResponse::Pong(PongResponse {
             error: None,
             req_id: 1,
             time_in: "2024-05-20T11:08:49.272922Z".to_string(),
@@ -54,11 +56,10 @@ mod ping_pong {
     async fn test_ping_pong() {
         let ping: Option<()> = None;
 
-        let message = Message {
-            method: "ping".to_string(),
+        let message = RequestMessage::Ping(RequestMessageBody {
             params: ping,
             req_id: 1,
-        };
+        });
 
         CallResponseTest::builder()
             .match_on(get_expected_ping())

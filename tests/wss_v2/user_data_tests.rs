@@ -1,7 +1,7 @@
 use crate::wss_v2::shared::ParseIncomingTest;
 use kraken_async_rs::request_types::{TimeInForce, TriggerType};
 use kraken_async_rs::response_types::{BuySell, OrderStatusV2, OrderType};
-use kraken_async_rs::wss::v2::base_messages::{ChannelMessage, WssMessage};
+use kraken_async_rs::wss::v2::base_messages::{ChannelResponse, ResponseMessage};
 use kraken_async_rs::wss::v2::trading_messages::{FeePreference, PriceType};
 use kraken_async_rs::wss::v2::user_data_messages::{
     Balance, BalanceResponse, ExecutionResponse, ExecutionResult, ExecutionType, Fee,
@@ -26,7 +26,7 @@ async fn test_execution_trades_snapshot() {
         "sequence":1
     }"#.to_string();
 
-    let expected_trades_snapshot = WssMessage::Channel(ChannelMessage::Execution(
+    let expected_trades_snapshot = ResponseMessage::Channel(ChannelResponse::Execution(
         ExecutionResponse::Snapshot(UserDataResponse {
             data: vec![
                 ExecutionResult {
@@ -220,7 +220,7 @@ async fn test_execution_order_update_cancelled() {
     "avg_price":0.00000,"order_userref":0,"cancel_reason":"User requested","reason":"User requested",
     "order_id":"KIUEL4-G3PWU-HOJTYU"}],"sequence":143}"#.to_string();
 
-    let expected_update_cancel = WssMessage::Channel(ChannelMessage::Execution(
+    let expected_update_cancel = ResponseMessage::Channel(ChannelResponse::Execution(
         ExecutionResponse::Update(UserDataResponse {
             data: vec![ExecutionResult {
                 execution_type: ExecutionType::Canceled,
@@ -280,7 +280,7 @@ async fn test_execution_limit_order_update_pending() {
     "order_userref":0,"limit_price_type":"static","limit_price":0.18328,"stop_price":0.00000,"order_status":"pending_new",
     "fee_usd_equiv":0.0000000,"fee_ccy_pref":"fciq","timestamp":"2024-05-18T12:01:56.165888Z"}],"sequence":120}"#.to_string();
 
-    let expected_update_pending = WssMessage::Channel(ChannelMessage::Execution(
+    let expected_update_pending = ResponseMessage::Channel(ChannelResponse::Execution(
         ExecutionResponse::Update(UserDataResponse {
             data: vec![ExecutionResult {
                 execution_type: ExecutionType::PendingNew,
@@ -341,7 +341,7 @@ async fn test_execution_stop_loss_limit_order_update_pending() {
     "stop_price":0.2,"limit_price":0.2,"trigger":"index","order_status":"pending_new","fee_usd_equiv":0,"fee_ccy_pref":"fciq",
     "timestamp":"2024-05-18T12:01:56.165888Z"}],"sequence":120}"#.to_string();
 
-    let expected_update_pending = WssMessage::Channel(ChannelMessage::Execution(
+    let expected_update_pending = ResponseMessage::Channel(ChannelResponse::Execution(
         ExecutionResponse::Update(UserDataResponse {
             data: vec![ExecutionResult {
                 execution_type: ExecutionType::PendingNew,
@@ -408,7 +408,7 @@ async fn test_execution_order_update_new() {
     let new = r#"{"channel":"executions","type":"update","data":[{"timestamp":"2024-05-18T12:58:51.121515Z",
     "order_status":"new","exec_type":"new","order_userref":0,"order_id":"7J91XK-XMFEL-348VPM"}],"sequence":148}"#.to_string();
 
-    let expected_update_new = WssMessage::Channel(ChannelMessage::Execution(
+    let expected_update_new = ResponseMessage::Channel(ChannelResponse::Execution(
         ExecutionResponse::Update(UserDataResponse {
             data: vec![ExecutionResult {
                 execution_type: ExecutionType::New,
@@ -478,7 +478,7 @@ async fn test_balances_snapshot() {
     "#
     .to_string();
 
-    let expected_snapshot = WssMessage::Channel(ChannelMessage::Balance(
+    let expected_snapshot = ResponseMessage::Channel(ChannelResponse::Balance(
         BalanceResponse::Snapshot(UserDataResponse {
             data: vec![
                 Balance {
@@ -541,7 +541,7 @@ async fn test_balances_updates() {
     }"#
     .to_string();
 
-    let expected_usd_update = WssMessage::Channel(ChannelMessage::Balance(
+    let expected_usd_update = ResponseMessage::Channel(ChannelResponse::Balance(
         BalanceResponse::Update(UserDataResponse {
             data: vec![LedgerUpdate {
                 asset: "USD".to_string(),
@@ -582,7 +582,7 @@ async fn test_balances_updates() {
     }"#
     .to_string();
 
-    let expected_base_update = WssMessage::Channel(ChannelMessage::Balance(
+    let expected_base_update = ResponseMessage::Channel(ChannelResponse::Balance(
         BalanceResponse::Update(UserDataResponse {
             data: vec![LedgerUpdate {
                 asset: "ADX".to_string(),

@@ -1,28 +1,37 @@
 use crate::wss::v2::admin_messages::StatusUpdate;
-use crate::wss::v2::market_data_messages::{Instruments, Ohlc, Ticker, Trade, L2, L3};
+use crate::wss::v2::market_data_messages::{
+    BookSubscription, BookUnsubscription, Instruments, InstrumentsSubscription,
+    InstrumentsUnsubscription, Ohlc, OhlcSubscription, OhlcUnsubscription, Ticker,
+    TickerSubscription, TickerUnsubscription, Trade, TradesSubscription, TradesUnsubscription, L2,
+    L3,
+};
 use crate::wss::v2::trading_messages::{
-    AddOrderResult, BatchCancelResponse, CancelAllOrdersResult, CancelOnDisconnectResult,
-    CancelOrderResult, EditOrderResult,
+    AddOrderParams, AddOrderResult, BatchCancelParams, BatchCancelResponse, BatchOrderParams,
+    CancelAllOrdersParams, CancelAllOrdersResult, CancelOnDisconnectParams,
+    CancelOnDisconnectResult, CancelOrderParams, CancelOrderResult, EditOrderParams,
+    EditOrderResult,
 };
 use crate::wss::v2::user_data_messages::{
-    BalanceResponse, ExecutionResponse, SubscriptionResult, UnsubscriptionResult,
+    BalanceResponse, BalancesSubscription, BalancesUnsubscription, ExecutionResponse,
+    ExecutionSubscription, ExecutionUnsubscription, SubscriptionResult, UnsubscriptionResult,
 };
 use serde::{de, Deserialize, Deserializer, Serialize};
 use serde_json::Value::Null;
+use serde_with::skip_serializing_none;
 use std::collections::VecDeque;
 use std::fmt::Debug;
 
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(untagged)]
-pub enum WssMessage {
-    Channel(ChannelMessage),
-    Method(MethodMessage),
+pub enum ResponseMessage {
+    Channel(ChannelResponse),
+    Method(MethodResponse),
     Error(ErrorResponse),
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(tag = "method")]
-pub enum MethodMessage {
+pub enum MethodResponse {
     #[serde(rename = "add_order")]
     AddOrder(ResultResponse<AddOrderResult>),
     #[serde(rename = "edit_order")]
@@ -49,7 +58,7 @@ pub enum MethodMessage {
 
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(tag = "channel")]
-pub enum ChannelMessage {
+pub enum ChannelResponse {
     #[serde(rename = "heartbeat")]
     Heartbeat,
     #[serde(rename = "status")]
@@ -72,36 +81,71 @@ pub enum ChannelMessage {
     L3(SingleResponse<L3>),
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Message<T>
-where
-    T: Debug,
-{
-    pub method: String,
-    #[serde(skip_serializing_if = "is_none")]
-    pub params: T,
-    pub req_id: i64,
+#[derive(Debug, Serialize, Clone)]
+#[serde(tag = "method", rename_all = "snake_case")]
+pub enum RequestMessage {
+    Subscribe(RequestMessageBody<ChannelSubscription>),
+    Unsubscribe(RequestMessageBody<ChannelUnsubscription>),
+    AddOrder(RequestMessageBody<AddOrderParams>),
+    EditOrder(RequestMessageBody<EditOrderParams>),
+    CancelOrder(RequestMessageBody<CancelOrderParams>),
+    CancelAll(RequestMessageBody<CancelAllOrdersParams>),
+    CancelAllOrdersAfter(RequestMessageBody<CancelOnDisconnectParams>),
+    BatchAdd(RequestMessageBody<BatchOrderParams>),
+    BatchCancel(RequestMessageBody<BatchCancelParams>),
+    Ping(RequestMessageBody<()>),
 }
 
-impl<T> Message<T>
+#[derive(Debug, Serialize, Clone)]
+#[serde(tag = "channel")]
+pub enum ChannelSubscription {
+    #[serde(rename = "executions")]
+    Execution(ExecutionSubscription),
+    #[serde(rename = "balances")]
+    Balance(BalancesSubscription),
+    #[serde(rename = "trade")]
+    Trade(TradesSubscription),
+    #[serde(rename = "ticker")]
+    Ticker(TickerSubscription),
+    #[serde(rename = "ohlc")]
+    Ohlc(OhlcSubscription),
+    #[serde(rename = "instrument")]
+    Instrument(InstrumentsSubscription),
+    #[serde(rename = "book")]
+    Orderbook(BookSubscription),
+    #[serde(rename = "level3")]
+    L3(BookSubscription),
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(tag = "channel")]
+pub enum ChannelUnsubscription {
+    #[serde(rename = "executions")]
+    Execution(ExecutionUnsubscription),
+    #[serde(rename = "balances")]
+    Balance(BalancesUnsubscription),
+    #[serde(rename = "trade")]
+    Trade(TradesUnsubscription),
+    #[serde(rename = "ticker")]
+    Ticker(TickerUnsubscription),
+    #[serde(rename = "ohlc")]
+    Ohlc(OhlcUnsubscription),
+    #[serde(rename = "instrument")]
+    Instrument(InstrumentsUnsubscription),
+    #[serde(rename = "book")]
+    Orderbook(BookUnsubscription),
+    #[serde(rename = "level3")]
+    L3(BookUnsubscription),
+}
+
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Clone)]
+pub struct RequestMessageBody<T>
 where
     T: Debug,
 {
-    pub fn new_subscription(params: T, req_id: i64) -> Self {
-        Message {
-            method: "subscribe".to_string(),
-            params,
-            req_id,
-        }
-    }
-
-    pub fn new_unsubscription(params: T, req_id: i64) -> Self {
-        Message {
-            method: "unsubscribe".to_string(),
-            params,
-            req_id,
-        }
-    }
+    pub params: Option<T>,
+    pub req_id: i64,
 }
 
 // this is required to not serialize None for generic type parameters
@@ -177,7 +221,7 @@ mod tests {
     use crate::response_types::{BuySell, OrderStatusV2, OrderType, SystemStatus};
     use crate::wss::v2::admin_messages::StatusUpdate;
     use crate::wss::v2::base_messages::{
-        ChannelMessage, ErrorResponse, SingleResponse, WssMessage,
+        ChannelResponse, ErrorResponse, ResponseMessage, SingleResponse,
     };
     use crate::wss::v2::trading_messages::{FeePreference, PriceType};
     use crate::wss::v2::user_data_messages::{
@@ -191,7 +235,7 @@ mod tests {
     #[test]
     fn test_deserializing_status_update() {
         let message = r#"{"channel":"status","data":[{"api_version":"v2","connection_id":18266300427528990701,"system":"online","version":"2.0.4"}],"type":"update"}"#;
-        let expected = WssMessage::Channel(ChannelMessage::Status(SingleResponse {
+        let expected = ResponseMessage::Channel(ChannelResponse::Status(SingleResponse {
             data: StatusUpdate {
                 api_version: "v2".to_string(),
                 connection_id: Number::from_str("18266300427528990701").unwrap(),
@@ -200,7 +244,7 @@ mod tests {
             },
         }));
 
-        let parsed = serde_json::from_str::<WssMessage>(message).unwrap();
+        let parsed = serde_json::from_str::<ResponseMessage>(message).unwrap();
 
         assert_eq!(expected, parsed);
     }
@@ -208,14 +252,14 @@ mod tests {
     #[test]
     fn test_deserializing_l2_update() {
         let raw = r#"{"channel":"book","type":"update","data":[{"symbol":"BTC/USD","bids":[],"asks":[{"price":66732.5,"qty":5.48256063}],"checksum":2855135483,"timestamp":"2024-05-19T16:32:26.777454Z"}]}"#;
-        let _parsed = serde_json::from_str::<ChannelMessage>(raw).unwrap();
+        let _parsed = serde_json::from_str::<ChannelResponse>(raw).unwrap();
     }
 
     #[test]
     fn test_deserializing_execution_snapshot() {
         let message = r#"{"channel":"executions","type":"snapshot","data":[{"order_id":"AHOJQ8-1E72C-8M2VQH","symbol":"ADX/USD","order_qty":81.36256082,"cum_cost":0,"time_in_force":"GTC","exec_type":"pending_new","side":"buy","order_type":"stop-loss-limit","order_userref":0,"limit_price_type":"static","triggers":{"price":0.2,"price_type":"static","reference":"index","status":"untriggered"},"stop_price":0.2,"limit_price":0.2,"trigger":"index","order_status":"pending_new","fee_usd_equiv":0,"fee_ccy_pref":"fciq","timestamp":"2024-05-18T12:01:56.165888Z"}],"sequence":120}"#;
-        let expected = WssMessage::Channel(ChannelMessage::Execution(ExecutionResponse::Snapshot(
-            UserDataResponse {
+        let expected = ResponseMessage::Channel(ChannelResponse::Execution(
+            ExecutionResponse::Snapshot(UserDataResponse {
                 sequence: 120,
                 data: vec![ExecutionResult {
                     execution_type: ExecutionType::PendingNew,
@@ -266,10 +310,10 @@ mod tests {
                     }),
                     client_order_id: None,
                 }],
-            },
-        )));
+            }),
+        ));
 
-        let parsed = serde_json::from_str::<WssMessage>(message).unwrap();
+        let parsed = serde_json::from_str::<ResponseMessage>(message).unwrap();
 
         assert_eq!(expected, parsed);
     }
@@ -278,7 +322,7 @@ mod tests {
     fn test_deserializing_error_message() {
         let raw = r#"{"error":"ESession:Invalid session","method":"subscribe","req_id":42,"status":"error","success":false,"time_in":"2023-04-19T12:04:41.320119Z","time_out":"2023-04-19T12:04:41.980119Z"}"#;
 
-        let expected = WssMessage::Error(ErrorResponse {
+        let expected = ResponseMessage::Error(ErrorResponse {
             error: Some("ESession:Invalid session".to_string()),
             method: "subscribe".to_string(),
             status: "error".to_string(),
@@ -288,7 +332,7 @@ mod tests {
             time_out: "2023-04-19T12:04:41.980119Z".to_string(),
         });
 
-        let parsed = serde_json::from_str::<WssMessage>(raw).unwrap();
+        let parsed = serde_json::from_str::<ResponseMessage>(raw).unwrap();
         assert_eq!(expected, parsed);
     }
 }

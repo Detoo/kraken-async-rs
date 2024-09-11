@@ -54,21 +54,17 @@ pub enum PairStatus {
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Clone)]
 pub struct TickerSubscription {
-    pub channel: String,
     pub symbol: Vec<String>,
     pub event_trigger: Option<EventTrigger>,
     pub snapshot: Option<bool>,
 }
 
-impl TickerSubscription {
-    pub fn new(symbol: Vec<String>) -> Self {
-        TickerSubscription {
-            channel: "ticker".to_string(),
-            symbol,
-            event_trigger: None,
-            snapshot: None,
-        }
-    }
+#[serde_as]
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Clone)]
+pub struct TickerUnsubscription {
+    pub symbol: Vec<String>,
+    pub event_trigger: Option<EventTrigger>,
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
@@ -93,7 +89,6 @@ pub struct Ticker {
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Clone)]
 pub struct BookSubscription {
-    pub channel: String,
     pub symbol: Vec<String>,
     pub depth: Option<i32>,
     pub snapshot: Option<bool>,
@@ -101,26 +96,14 @@ pub struct BookSubscription {
     pub token: Option<Token>,
 }
 
-impl BookSubscription {
-    pub fn new(symbol: Vec<String>) -> Self {
-        BookSubscription {
-            channel: "book".to_string(),
-            symbol,
-            depth: None,
-            snapshot: None,
-            token: None,
-        }
-    }
-
-    pub fn new_l3(symbol: Vec<String>, token: Token) -> Self {
-        BookSubscription {
-            channel: "level3".to_string(),
-            symbol,
-            depth: None,
-            snapshot: None,
-            token: Some(token),
-        }
-    }
+#[serde_as]
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Clone)]
+pub struct BookUnsubscription {
+    pub symbol: Vec<String>,
+    pub depth: Option<i32>,
+    /// only needed for L3 subscription
+    pub token: Option<Token>,
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
@@ -202,39 +185,16 @@ pub struct L3BidAskUpdate {
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Clone)]
 pub struct OhlcSubscription {
-    pub channel: String,
     pub symbol: Vec<String>,
     pub interval: i32,
     pub snapshot: Option<bool>,
 }
 
-impl OhlcSubscription {
-    pub fn new(symbols: Vec<String>, interval: i32) -> Self {
-        OhlcSubscription {
-            channel: "ohlc".to_string(),
-            symbol: symbols,
-            interval,
-            snapshot: None,
-        }
-    }
-}
-
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Clone)]
 pub struct OhlcUnsubscription {
-    pub channel: String,
     pub symbol: Vec<String>,
     pub interval: i32,
-}
-
-impl OhlcUnsubscription {
-    pub fn new(symbols: Vec<String>, interval: i32) -> Self {
-        OhlcUnsubscription {
-            channel: "ohlc".to_string(),
-            symbol: symbols,
-            interval,
-        }
-    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -316,19 +276,15 @@ pub struct Ohlc {
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Clone)]
 pub struct TradesSubscription {
-    pub channel: String,
     pub symbol: Vec<String>,
     pub snapshot: Option<bool>,
 }
 
-impl TradesSubscription {
-    pub fn new(symbols: Vec<String>) -> Self {
-        TradesSubscription {
-            channel: "trade".to_string(),
-            symbol: symbols,
-            snapshot: None,
-        }
-    }
+#[serde_as]
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Clone)]
+pub struct TradesUnsubscription {
+    pub symbol: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
@@ -348,18 +304,13 @@ pub struct Trade {
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Clone)]
 pub struct InstrumentsSubscription {
-    pub channel: String,
     pub snapshot: Option<bool>,
 }
 
-impl InstrumentsSubscription {
-    pub fn new(snapshot: bool) -> Self {
-        InstrumentsSubscription {
-            channel: "instrument".to_string(),
-            snapshot: Some(snapshot),
-        }
-    }
-}
+#[serde_as]
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Clone)]
+pub struct InstrumentsUnsubscription {}
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct Asset {

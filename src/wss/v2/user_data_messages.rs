@@ -117,39 +117,16 @@ pub struct SubscriptionRequest<T> {
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Clone)]
 pub struct ExecutionSubscription {
-    pub channel: String,
     pub token: Token,
     pub snapshot_trades: Option<bool>,
     pub rate_counter: Option<bool>,
     pub snapshot: Option<bool>,
 }
 
-impl ExecutionSubscription {
-    pub fn new(token: Token) -> Self {
-        ExecutionSubscription {
-            channel: "executions".to_string(),
-            token,
-            snapshot_trades: None,
-            rate_counter: None,
-            snapshot: None,
-        }
-    }
-}
-
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Clone)]
 pub struct ExecutionUnsubscription {
-    pub channel: String,
     pub token: Token,
-}
-
-impl ExecutionUnsubscription {
-    pub fn new(token: Token) -> Self {
-        ExecutionUnsubscription {
-            channel: "executions".to_string(),
-            token,
-        }
-    }
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
@@ -307,19 +284,14 @@ pub struct ExecutionResult {
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Clone)]
 pub struct BalancesSubscription {
-    pub channel: String,
     pub token: Token,
     pub snapshot: Option<bool>,
 }
 
-impl BalancesSubscription {
-    pub fn new(token: Token) -> Self {
-        BalancesSubscription {
-            channel: "balances".to_string(),
-            token,
-            snapshot: None,
-        }
-    }
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Clone)]
+pub struct BalancesUnsubscription {
+    pub token: Token,
 }
 
 #[derive(Debug, Deserialize, PartialEq)]

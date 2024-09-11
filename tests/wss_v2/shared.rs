@@ -1,8 +1,7 @@
 use futures_util::StreamExt;
 use kraken_async_rs::wss::errors::WSSError;
-use kraken_async_rs::wss::v2::base_messages::{Message, WssMessage};
+use kraken_async_rs::wss::v2::base_messages::{RequestMessage, ResponseMessage};
 use kraken_async_rs::wss::v2::kraken_wss_client::KrakenWSSClient;
-use serde::Serialize;
 use serde_json::Value;
 use simple_builder::Builder;
 use std::fmt::Debug;
@@ -31,20 +30,14 @@ impl WssTestState {
 }
 
 #[derive(Debug, Builder)]
-pub struct CallResponseTest<T>
-where
-    T: Debug + Serialize,
-{
+pub struct CallResponseTest {
     match_on: Option<Value>,
     respond_with: Option<String>,
-    send: Option<Message<T>>,
-    expect: Option<WssMessage>,
+    send: Option<RequestMessage>,
+    expect: Option<ResponseMessage>,
 }
 
-impl<T> CallResponseTest<T>
-where
-    T: Debug + Serialize,
-{
+impl CallResponseTest {
     pub async fn test(&mut self) {
         assert!(self.match_on.is_some());
         assert!(self.respond_with.is_some());
@@ -60,7 +53,11 @@ where
             .mount(&test_state.mock_server)
             .await;
 
-        let mut stream = test_state.ws_client.connect::<WssMessage>().await.unwrap();
+        let mut stream = test_state
+            .ws_client
+            .connect::<ResponseMessage>()
+            .await
+            .unwrap();
 
         stream.send(&self.send.take().unwrap()).await.unwrap();
 
@@ -78,7 +75,7 @@ where
 #[derive(Debug)]
 pub struct ParseIncomingTest {
     incoming_messages: Vec<String>,
-    expected_messages: Vec<WssMessage>,
+    expected_messages: Vec<ResponseMessage>,
 }
 
 impl ParseIncomingTest {
@@ -94,7 +91,7 @@ impl ParseIncomingTest {
         self
     }
 
-    pub fn expect_message(mut self, message: WssMessage) -> Self {
+    pub fn expect_message(mut self, message: ResponseMessage) -> Self {
         self.expected_messages.push(message);
         self
     }
@@ -111,7 +108,11 @@ impl ParseIncomingTest {
             .mount(&test_state.mock_server)
             .await;
 
-        let mut stream = test_state.ws_client.connect::<WssMessage>().await.unwrap();
+        let mut stream = test_state
+            .ws_client
+            .connect::<ResponseMessage>()
+            .await
+            .unwrap();
 
         for (message, expected) in self
             .incoming_messages
@@ -135,7 +136,7 @@ impl ParseIncomingTest {
 }
 
 /// Parse an incoming message by spinning up a test server and forwarding the message to it.
-pub async fn parse_for_test(incoming: &str) -> Result<WssMessage, WSSError> {
+pub async fn parse_for_test(incoming: &str) -> Result<ResponseMessage, WSSError> {
     let mut test_state = WssTestState::new().await;
 
     let (mpsc_send, mpsc_recv) = mpsc::channel::<tokio_tungstenite::tungstenite::Message>(8);
@@ -145,7 +146,11 @@ pub async fn parse_for_test(incoming: &str) -> Result<WssMessage, WSSError> {
         .mount(&test_state.mock_server)
         .await;
 
-    let mut stream = test_state.ws_client.connect::<WssMessage>().await.unwrap();
+    let mut stream = test_state
+        .ws_client
+        .connect::<ResponseMessage>()
+        .await
+        .unwrap();
 
     mpsc_send
         .send(TungsteniteMessage::Text(incoming.to_string()))

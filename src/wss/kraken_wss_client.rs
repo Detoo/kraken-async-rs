@@ -31,7 +31,7 @@ type RawStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
 /// to send a valid subscription message for some number of pairs to subscribe to, then listen
 /// indefinitely.
 /// ```no_run
-/// use kraken_async_rs::wss::v2::base_messages::{Message, WssMessage};
+/// use kraken_async_rs::wss::v2::base_messages::ResponseMessage;
 /// use kraken_async_rs::wss::v2::kraken_wss_client::KrakenWSSClient;
 /// use kraken_async_rs::wss::v2::market_data_messages::OhlcSubscription;
 /// use std::time::Duration;
@@ -40,11 +40,18 @@ type RawStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
 ///
 /// #[tokio::main]
 /// async fn main() {
-///     let mut client = KrakenWSSClient::new();
-///     let mut kraken_stream = client.connect::<WssMessage>().await.unwrap();
+///     use kraken_async_rs::wss::v2::base_messages::{ChannelSubscription, RequestMessage, RequestMessageBody};
+/// let mut client = KrakenWSSClient::new();
+///     let mut kraken_stream = client.connect::<ResponseMessage>().await.unwrap();
 ///
-///     let ohlc_params = OhlcSubscription::new(vec!["ETH/USD".into()], 60);
-///     let subscription = Message::new_subscription(ohlc_params, 0);
+///     let subscription = RequestMessage::Subscribe(RequestMessageBody {
+///         params: Some(ChannelSubscription::Ohlc(OhlcSubscription {
+///             symbol: vec!["ETH/USD".into()],
+///             interval: 60,
+///             snapshot: None,
+///         })),
+///         req_id: 0,
+///     });
 ///
 ///     let result = kraken_stream.send(&subscription).await;
 ///     assert!(result.is_ok());

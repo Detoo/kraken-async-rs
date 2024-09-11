@@ -1,7 +1,7 @@
 use crate::wss_v2::shared::ParseIncomingTest;
 use kraken_async_rs::response_types::BuySell;
 use kraken_async_rs::wss::v2::base_messages::{
-    ChannelMessage, MarketDataResponse, SingleResponse, WssMessage,
+    ChannelResponse, MarketDataResponse, ResponseMessage, SingleResponse,
 };
 use kraken_async_rs::wss::v2::market_data_messages::{
     Asset, AssetStatus, BidAsk, Instruments, L3BidAsk, L3BidAskUpdate, L3Orderbook,
@@ -32,7 +32,7 @@ async fn test_ticker_snapshot() {
     }"#
     .to_string();
 
-    let expected_snapshot = WssMessage::Channel(ChannelMessage::Ticker(SingleResponse {
+    let expected_snapshot = ResponseMessage::Channel(ChannelResponse::Ticker(SingleResponse {
         data: Ticker {
             ask: dec!(65972.9),
             ask_quantity: dec!(39.67506683),
@@ -78,7 +78,7 @@ async fn test_ticker_update() {
     }"#
     .to_string();
 
-    let expected_update = WssMessage::Channel(ChannelMessage::Ticker(SingleResponse {
+    let expected_update = ResponseMessage::Channel(ChannelResponse::Ticker(SingleResponse {
         data: Ticker {
             ask: dec!(65843.8),
             ask_quantity: dec!(0.31232000),
@@ -128,7 +128,7 @@ async fn test_book_snapshot() {
     }"#
     .to_string();
 
-    let expected_snapshot = WssMessage::Channel(ChannelMessage::Orderbook(SingleResponse {
+    let expected_snapshot = ResponseMessage::Channel(ChannelResponse::Orderbook(SingleResponse {
         data: L2::Orderbook(Orderbook {
             symbol: "BTC/USD".to_string(),
             checksum: 2330500275,
@@ -205,7 +205,7 @@ async fn test_book_update() {
     }"#
     .to_string();
 
-    let expected_update = WssMessage::Channel(ChannelMessage::Orderbook(SingleResponse {
+    let expected_update = ResponseMessage::Channel(ChannelResponse::Orderbook(SingleResponse {
         data: L2::Update(OrderbookUpdate {
             symbol: "BTC/USD".to_string(),
             checksum: 902440905,
@@ -256,7 +256,7 @@ async fn test_l3_snapshot() {
         ]
     }]}"#.to_string();
 
-    let expected_snapshot = WssMessage::Channel(ChannelMessage::L3(SingleResponse {
+    let expected_snapshot = ResponseMessage::Channel(ChannelResponse::L3(SingleResponse {
         data: L3::Orderbook(L3Orderbook {
             symbol: "BTC/USD".to_string(),
             bids: vec![
@@ -345,7 +345,7 @@ async fn test_l3_update() {
     }"#
     .to_string();
 
-    let expected_update = WssMessage::Channel(ChannelMessage::L3(SingleResponse {
+    let expected_update = ResponseMessage::Channel(ChannelResponse::L3(SingleResponse {
         data: L3::Update(L3OrderbookUpdate {
             symbol: "BTC/USD".to_string(),
             bids: vec![
@@ -389,7 +389,7 @@ async fn test_candles_snapshot() {
     }"#
     .to_string();
 
-    let expected_snapshot = WssMessage::Channel(ChannelMessage::Ohlc(MarketDataResponse {
+    let expected_snapshot = ResponseMessage::Channel(ChannelResponse::Ohlc(MarketDataResponse {
         data: vec![
             Ohlc {
                 symbol: "ETH/USD".to_string(),
@@ -436,7 +436,7 @@ async fn test_trade_snapshot() {
         ]
     }"#.to_string();
 
-    let expected_snapshot = WssMessage::Channel(ChannelMessage::Trade(MarketDataResponse {
+    let expected_snapshot = ResponseMessage::Channel(ChannelResponse::Trade(MarketDataResponse {
         data: vec![
             Trade {
                 symbol: "BTC/USD".to_string(),
@@ -477,7 +477,7 @@ async fn test_trade_update() {
         ]
     }"#.to_string();
 
-    let expected_update = WssMessage::Channel(ChannelMessage::Trade(MarketDataResponse {
+    let expected_update = ResponseMessage::Channel(ChannelResponse::Trade(MarketDataResponse {
         data: vec![
             Trade {
                 symbol: "BTC/USD".to_string(),
@@ -525,77 +525,78 @@ async fn test_instruments_snapshot() {
         }
     }"#.to_string();
 
-    let expected_snapshot = WssMessage::Channel(ChannelMessage::Instrument(MarketDataResponse {
-        data: Instruments {
-            assets: vec![
-                Asset {
-                    id: "USD".to_string(),
-                    margin_rate: Some(dec!(0.025000)),
-                    precision: 4,
-                    precision_display: 2,
-                    status: AssetStatus::Enabled,
-                    borrowable: true,
-                    collateral_value: dec!(1.0),
-                },
-                Asset {
-                    id: "EUR".to_string(),
-                    margin_rate: Some(dec!(0.020000)),
-                    precision: 4,
-                    precision_display: 2,
-                    status: AssetStatus::Enabled,
-                    borrowable: true,
-                    collateral_value: dec!(1.0),
-                },
-                Asset {
-                    id: "ETH".to_string(),
-                    margin_rate: Some(dec!(0.020000)),
-                    precision: 10,
-                    precision_display: 5,
-                    status: AssetStatus::Enabled,
-                    borrowable: true,
-                    collateral_value: dec!(1.0),
-                },
-            ],
-            pairs: vec![
-                Pair {
-                    base: "EUR".to_string(),
-                    quote: "USD".to_string(),
-                    cost_min: dec!(0.50),
-                    cost_precision: 5,
-                    has_index: true,
-                    margin_initial: None,
-                    marginable: false,
-                    position_limit_long: None,
-                    position_limit_short: None,
-                    price_increment: dec!(0.00001),
-                    price_precision: 5,
-                    quantity_increment: dec!(0.00000001),
-                    quantity_min: dec!(0.50),
-                    quantity_precision: 8,
-                    status: PairStatus::Online,
-                    symbol: "EUR/USD".to_string(),
-                },
-                Pair {
-                    base: "ETH".to_string(),
-                    quote: "BTC".to_string(),
-                    cost_min: dec!(0.00002),
-                    cost_precision: 10,
-                    has_index: true,
-                    margin_initial: Some(dec!(0.2)),
-                    marginable: true,
-                    position_limit_long: Some(1000),
-                    position_limit_short: Some(600),
-                    price_increment: dec!(0.00001),
-                    price_precision: 5,
-                    quantity_increment: dec!(0.00000001),
-                    quantity_min: dec!(0.002),
-                    quantity_precision: 8,
-                    status: PairStatus::Online,
-                    symbol: "ETH/BTC".to_string(),
-                },
-            ],
-        },
-    }));
+    let expected_snapshot =
+        ResponseMessage::Channel(ChannelResponse::Instrument(MarketDataResponse {
+            data: Instruments {
+                assets: vec![
+                    Asset {
+                        id: "USD".to_string(),
+                        margin_rate: Some(dec!(0.025000)),
+                        precision: 4,
+                        precision_display: 2,
+                        status: AssetStatus::Enabled,
+                        borrowable: true,
+                        collateral_value: dec!(1.0),
+                    },
+                    Asset {
+                        id: "EUR".to_string(),
+                        margin_rate: Some(dec!(0.020000)),
+                        precision: 4,
+                        precision_display: 2,
+                        status: AssetStatus::Enabled,
+                        borrowable: true,
+                        collateral_value: dec!(1.0),
+                    },
+                    Asset {
+                        id: "ETH".to_string(),
+                        margin_rate: Some(dec!(0.020000)),
+                        precision: 10,
+                        precision_display: 5,
+                        status: AssetStatus::Enabled,
+                        borrowable: true,
+                        collateral_value: dec!(1.0),
+                    },
+                ],
+                pairs: vec![
+                    Pair {
+                        base: "EUR".to_string(),
+                        quote: "USD".to_string(),
+                        cost_min: dec!(0.50),
+                        cost_precision: 5,
+                        has_index: true,
+                        margin_initial: None,
+                        marginable: false,
+                        position_limit_long: None,
+                        position_limit_short: None,
+                        price_increment: dec!(0.00001),
+                        price_precision: 5,
+                        quantity_increment: dec!(0.00000001),
+                        quantity_min: dec!(0.50),
+                        quantity_precision: 8,
+                        status: PairStatus::Online,
+                        symbol: "EUR/USD".to_string(),
+                    },
+                    Pair {
+                        base: "ETH".to_string(),
+                        quote: "BTC".to_string(),
+                        cost_min: dec!(0.00002),
+                        cost_precision: 10,
+                        has_index: true,
+                        margin_initial: Some(dec!(0.2)),
+                        marginable: true,
+                        position_limit_long: Some(1000),
+                        position_limit_short: Some(600),
+                        price_increment: dec!(0.00001),
+                        price_precision: 5,
+                        quantity_increment: dec!(0.00000001),
+                        quantity_min: dec!(0.002),
+                        quantity_precision: 8,
+                        status: PairStatus::Online,
+                        symbol: "ETH/BTC".to_string(),
+                    },
+                ],
+            },
+        }));
 
     ParseIncomingTest::new()
         .with_incoming(instrument_snapshot)

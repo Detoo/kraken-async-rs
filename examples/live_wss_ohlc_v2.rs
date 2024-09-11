@@ -1,4 +1,6 @@
-use kraken_async_rs::wss::v2::base_messages::{Message, WssMessage};
+use kraken_async_rs::wss::v2::base_messages::{
+    ChannelSubscription, RequestMessage, RequestMessageBody, ResponseMessage,
+};
 use kraken_async_rs::wss::v2::kraken_wss_client::KrakenWSSClient;
 use kraken_async_rs::wss::v2::market_data_messages::OhlcSubscription;
 use std::fs::File;
@@ -14,11 +16,18 @@ async fn main() {
     set_up_logging("wss_ohlc_v2.log");
 
     let mut client = KrakenWSSClient::new();
-    let mut kraken_stream = client.connect::<WssMessage>().await.unwrap();
+    let mut kraken_stream = client.connect::<ResponseMessage>().await.unwrap();
 
-    let ohlc_params = OhlcSubscription::new(vec!["ETH/USD".into()], 60);
+    let ohlc_params = ChannelSubscription::Ohlc(OhlcSubscription {
+        symbol: vec!["ETH/USD".into()],
+        interval: 60,
+        snapshot: None,
+    });
 
-    let subscription = Message::new_subscription(ohlc_params, 0);
+    let subscription = RequestMessage::Subscribe(RequestMessageBody {
+        params: Some(ohlc_params),
+        req_id: 0,
+    });
 
     let result = kraken_stream.send(&subscription).await;
     assert!(result.is_ok());
