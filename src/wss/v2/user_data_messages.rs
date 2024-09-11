@@ -98,6 +98,8 @@ pub enum ExecutionType {
     Canceled,
     Expired,
     Trade,
+    Restated,
+    Status,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]

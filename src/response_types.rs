@@ -219,6 +219,7 @@ pub enum OrderStatusV2 {
     Filled,
     Canceled,
     Expired,
+    Triggered,
 }
 
 /// Status of a position
