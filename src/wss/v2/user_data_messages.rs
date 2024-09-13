@@ -215,13 +215,13 @@ pub struct Fee {
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct TriggerDescription {
-    pub reference: TriggerType,
-    pub price: Decimal,
-    pub price_type: PriceType,
+    pub status: TriggerStatus,
+    pub price: Option<Decimal>,
+    pub price_type: Option<PriceType>,
+    pub reference: Option<TriggerType>,
     pub actual_price: Option<Decimal>,
     pub peak_price: Option<Decimal>,
     pub last_price: Option<Decimal>,
-    pub status: TriggerStatus,
     pub timestamp: Option<String>,
 }
 
@@ -445,6 +445,83 @@ mod tests {
             timestamp: "2024-05-18T11:00:37.240691Z".to_string(),
             trade_id: None,
             triggers: None,
+            client_order_id: None,
+        };
+        let parsed: ExecutionResult = serde_json::from_str(message).unwrap();
+
+        assert_eq!(expected, parsed);
+    }
+
+    fn test_deserializing_execution_stop_limit_order_triggered_update() {
+        // It was not documented properly by Kraken but the following message was valid as of 2024/09/12
+        let message = r#"{
+            "channel": "executions",
+            "type": "update",
+            "data": [
+                {
+                    "timestamp": "2024-05-18T11:00:37.240691Z",
+                    "order_status": "triggered",
+                    "exec_type": "new",
+                    "triggered_price": 0.121,
+                    "limit_price": 0.121,
+                    "triggers": {
+                        "status": "triggered",
+                        "timestamp": "2024-05-18T11:00:37.240691Z",
+                        "last_price": 0.121
+                    },
+                    "order_userref": 0,
+                    "order_id": "O7IBL5-O2V6X-EEXY4U"
+                }
+            ],
+            "sequence": 0
+        }"#;
+        let expected = ExecutionResult {
+            execution_type: ExecutionType::New,
+            cash_order_quantity: None,
+            contingent: None,
+            cost: None,
+            execution_id: None,
+            fees: None,
+            liquidity_indicator: None,
+            last_price: None,
+            last_quantity: None,
+            average_price: None,
+            reason: None,
+            cumulative_cost: None,
+            cumulative_quantity: None,
+            display_quantity: None,
+            effective_time: None,
+            expire_time: None,
+            fee_preference: None,
+            fee_usd_equivalent: None,
+            limit_price: Some(dec!(0.121)),
+            limit_price_type: None,
+            margin: None,
+            no_market_price_protection: None,
+            order_ref_id: None,
+            order_id: "O7IBL5-O2V6X-EEXY4U".to_string(),
+            order_quantity: None,
+            order_type: None,
+            order_status: OrderStatusV2::Triggered,
+            order_user_ref: Some(0),
+            post_only: None,
+            position_status: None,
+            reduce_only: None,
+            side: None,
+            symbol: None,
+            time_in_force: None,
+            timestamp: "2024-05-18T11:00:37.240691Z".to_string(),
+            trade_id: None,
+            triggers: Some(TriggerDescription {
+                status: TriggerStatus::Triggered,
+                price: None,
+                price_type: None,
+                reference: None,
+                actual_price: None,
+                peak_price: None,
+                timestamp: Some("2024-05-18T11:00:37.240691Z".to_string()),
+                last_price: Some(dec!(0.121)),
+            }),
             client_order_id: None,
         };
         let parsed: ExecutionResult = serde_json::from_str(message).unwrap();

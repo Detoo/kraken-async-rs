@@ -299,9 +299,9 @@ mod tests {
                     timestamp: "2024-05-18T12:01:56.165888Z".to_string(),
                     trade_id: None,
                     triggers: Some(TriggerDescription {
-                        reference: TriggerType::Index,
-                        price: dec!(0.2),
-                        price_type: PriceType::Static,
+                        reference: Some(TriggerType::Index),
+                        price: Some(dec!(0.2)),
+                        price_type: Some(PriceType::Static),
                         actual_price: None,
                         peak_price: None,
                         last_price: None,
